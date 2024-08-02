@@ -11,9 +11,8 @@ const firebaseConfig: FirebaseOptions = {
   appId: "1:742419562518:web:501a7e3174e38fb9443537"
 };
 
-// Firebaseの初期化
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const database = getDatabase(app);
 
-// Firebaseの認証とデータベースのインスタンス
-export const auth = getAuth(app);
-export const database = getDatabase(app);
+export { app, auth, database };
