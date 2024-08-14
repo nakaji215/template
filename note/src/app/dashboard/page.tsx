@@ -8,20 +8,34 @@ import { ref, push, update, remove, onValue } from 'firebase/database';
 
 type Note = {
   id: string;
+  title: string;
   content: string;
   category: string;
 };
 
+type Category = {
+  id: string;
+  name: string;
+};
+
 export default function Dashboard() {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [newNote, setNewNote] = useState('');
+  const [newNoteTitle, setNewNoteTitle] = useState('');
+  const [newNoteContent, setNewNoteContent] = useState('');
   const [editNoteId, setEditNoteId] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState('');
-  const [selectedTab, setSelectedTab] = useState<string>('all'); // Default to 'all'
+  const [editNoteTitle, setEditNoteTitle] = useState('');
+  const [editNoteContent, setEditNoteContent] = useState('');
+  const [editNoteCategory, setEditNoteCategory] = useState<string>('');
+  const [selectedTab, setSelectedTab] = useState<'notes' | 'categories' | 'text'>('notes');
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [newCategory, setNewCategory] = useState('');
-  const [copiedNoteContent, setCopiedNoteContent] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedNoteContent, setSelectedNoteContent] = useState<string>('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
   const router = useRouter();
   const user = auth.currentUser;
 
@@ -34,77 +48,105 @@ export default function Dashboard() {
     const userNotesRef = ref(database, `notes/${user.uid}`);
     const userCategoriesRef = ref(database, `categories/${user.uid}`);
 
-    // Fetch notes
-    onValue(userNotesRef, (snapshot) => {
-      const notesData: Note[] = [];
-      snapshot.forEach((childSnapshot) => {
-        const note = childSnapshot.val();
-        notesData.push({
-          id: childSnapshot.key as string,
-          content: note.content,
-          category: note.category || 'Uncategorized', // Default category
+    const fetchNotes = () => {
+      onValue(userNotesRef, (snapshot) => {
+        const notesData: Note[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const note = childSnapshot.val();
+          notesData.push({
+            id: childSnapshot.key as string,
+            title: note.title || '',
+            content: note.content,
+            category: note.category || '',
+          });
         });
+        setNotes(notesData);
       });
-      setNotes(notesData);
-    });
+    };
 
-    // Fetch categories
-    onValue(userCategoriesRef, (snapshot) => {
-      const categoriesData: { id: string; name: string }[] = [];
-      snapshot.forEach((childSnapshot) => {
-        const category = childSnapshot.val();
-        categoriesData.push({ id: childSnapshot.key as string, name: category.name });
+    fetchNotes();
+    const unsubscribeNotes = onValue(userNotesRef, fetchNotes);
+
+    const fetchCategories = () => {
+      onValue(userCategoriesRef, (snapshot) => {
+        const categoriesData: Category[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const category = childSnapshot.val();
+          categoriesData.push({ id: childSnapshot.key as string, name: category.name });
+        });
+        setCategories(categoriesData);
       });
-      setCategories(categoriesData);
-    });
+    };
+
+    fetchCategories();
+    const unsubscribeCategories = onValue(userCategoriesRef, fetchCategories);
+
+    return () => {
+      unsubscribeNotes();
+      unsubscribeCategories();
+    };
   }, [router, user]);
 
   const handleAddNote = async () => {
-    if (newNote.trim() === '' || selectedTab === '') return;
+    if (newNoteTitle.trim() === '' || newNoteContent.trim() === '' || selectedCategory.trim() === '') {
+      setToastMessage('メモのタイトル、内容、カテゴリーを入力してください。'); // 修正
+      return;
+    }
 
-    const userNotesRef = ref(database, `notes/${user.uid}`);
-    await push(userNotesRef, {
-      content: newNote,
-      category: selectedTab !== 'all' ? selectedTab : 'Uncategorized',
-    });
-    setNewNote('');
+    try {
+      const userNotesRef = ref(database, `notes/${user.uid}`);
+      await push(userNotesRef, {
+        title: newNoteTitle,
+        content: newNoteContent,
+        category: selectedCategory,
+      });
+      setNewNoteTitle('');
+      setNewNoteContent('');
+      setSelectedCategory('all'); // 修正
+
+      setToastMessage('メモが正常に追加されました！');
+    } catch (error) {
+      setToastMessage('メモの追加中にエラーが発生しました。');
+    }
   };
 
-  const handleUpdateNote = async (noteId: string) => {
-    if (editContent.trim() === '' || selectedTab === '') return;
-
-    const noteRef = ref(database, `notes/${user.uid}/${noteId}`);
-    await update(noteRef, {
-      content: editContent,
-      category: selectedTab !== 'all' ? selectedTab : 'Uncategorized',
-    });
-    setEditNoteId(null);
-    setEditContent('');
+  const handleUpdateNote = async () => {
+    if (editNoteId && editNoteTitle.trim() !== '' && editNoteContent.trim() !== '') {
+      const noteRef = ref(database, `notes/${user.uid}/${editNoteId}`);
+      await update(noteRef, {
+        title: editNoteTitle,
+        content: editNoteContent,
+        category: editNoteCategory || 'カテゴリー', // Ensure default category here
+      });
+      setEditNoteId(null);
+      setEditNoteTitle('');
+      setEditNoteContent('');
+      setEditNoteCategory(''); // 修正
+    }
   };
 
   const handleDeleteNote = async () => {
-    if (!noteToDelete) return;
-
-    const noteRef = ref(database, `notes/${user.uid}/${noteToDelete}`);
-    await remove(noteRef);
-    setNoteToDelete(null);
+    if (noteToDelete) {
+      const noteRef = ref(database, `notes/${user.uid}/${noteToDelete}`);
+      await remove(noteRef);
+      setNoteToDelete(null);
+    }
   };
 
-  // Function to handle copying note content to clipboard
   const handleCopyNote = (noteContent: string) => {
     navigator.clipboard
       .writeText(noteContent)
       .then(() => {
-        alert('ノートがコピーされました!');
+        setToastMessage('コピーしました。');
       })
       .catch((err) => {
-        console.error('コピーに失敗しました: ', err);
+        setToastMessage('コピー中にエラーが発生しました。');
       });
   };
 
-  // Function to handle setting note content in the edit area
   const handleCreateNote = (noteContent: string) => {
-    setCopiedNoteContent(noteContent);
+    setSelectedNoteContent(noteContent);
+    setSelectedTab('text');
   };
 
   const handleSignOut = () => {
@@ -113,11 +155,10 @@ export default function Dashboard() {
         router.push('/');
       })
       .catch((error) => {
-        console.error('ログアウトに失敗しました: ', error);
+        console.error('Sign out failed: ', error);
       });
   };
 
-  // Convert newlines to <br> tags
   const formatNoteContent = (content: string) => {
     return content.split('\n').map((line, index) => (
       <React.Fragment key={index}>
@@ -130,198 +171,369 @@ export default function Dashboard() {
   const handleAddCategory = async () => {
     if (newCategory.trim() === '') return;
 
+    const isDuplicate = categories.some(
+      (category) => category.name === newCategory.trim()
+    );
+
+    if (isDuplicate) {
+      setToastMessage("同じ名前のカテゴリがすでに存在します。");
+      return;
+    }
+
     const userCategoriesRef = ref(database, `categories/${user.uid}`);
     await push(userCategoriesRef, { name: newCategory });
     setNewCategory('');
   };
 
-  const filteredNotes =
-    selectedTab === 'all'
-      ? notes
-      : notes.filter((note) => note.category === selectedTab);
+  const handleEditCategory = async () => {
+    if (editCategoryId && editCategoryName.trim() !== '') {
+      const categoryRef = ref(database, `categories/${user.uid}/${editCategoryId}`);
+      await update(categoryRef, { name: editCategoryName });
+      setEditCategoryId(null);
+      setEditCategoryName('');
+    }
+  };
+
+  const handleStartEditCategory = (categoryId: string, categoryName: string) => {
+    setEditCategoryId(categoryId);
+    setEditCategoryName(categoryName);
+  };
+
+  const handleStartEditNote = (noteId: string, noteTitle: string, noteContent: string, noteCategory: string) => {
+    setEditNoteId(noteId);
+    setEditNoteTitle(noteTitle);
+    setEditNoteContent(noteContent);
+    setEditNoteCategory(noteCategory);
+    setSelectedTab('notes');
+  };
+
+  const handleDeleteCategory = async () => {
+    if (deleteCategoryId) {
+      const categoryRef = ref(database, `categories/${user.uid}/${deleteCategoryId}`);
+      await remove(categoryRef);
+      setDeleteCategoryId(null);
+    }
+  };
+
+  const filteredNotes = selectedCategory === 'all'
+    ? notes
+    : notes.filter((note) => note.category === selectedCategory);
 
   return (
     <div className="w-screen h-screen p-4">
-      <h1 className="text-red text-3xl mb-4">Your Dashboard</h1>
-      <button
-        className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mb-4"
-        onClick={handleSignOut}
-      >
-        Sign Out
-      </button>
-
-      <div className="bg-white p-4 rounded mb-4">
-        <h2 className="text-xl mb-2">Add Note</h2>
-        <textarea
-          className="border rounded w-full py-2 px-3 mb-2"
-          value={newNote}
-          onChange={(e) => setNewNote(e.target.value)}
-          placeholder="Enter your note"
-        />
+      <div className='flex justify-between items-center'>
+        <h1 className="text-red sm:text-3xl text-xl mb-4">Service Name</h1>
         <button
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          onClick={handleAddNote}
+          className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mb-4"
+          onClick={handleSignOut}
         >
-          Add
+          ログアウト
         </button>
       </div>
 
-      <div className="bg-white p-4 rounded mb-4">
-        <h2 className="text-xl mb-2">Add Category</h2>
-        <input
-          className="border rounded w-full py-2 px-3 mb-2"
-          value={newCategory}
-          onChange={(e) => setNewCategory(e.target.value)}
-          placeholder="Enter new category"
-        />
+      {/* Tabs Navigation */}
+      <div className="mb-4 flex whitespace-nowrap">
         <button
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          onClick={handleAddCategory}
+          className={`px-2 py-2 mr-2 sm:px-4 ${selectedTab === 'notes' ? 'bg-blue-500' : 'bg-gray-300'} text-white font-bold rounded`}
+          onClick={() => setSelectedTab('notes')}
         >
-          Add Category
+          ノート
+        </button>
+        <button
+          className={`px-4 py-2 mr-2 ${selectedTab === 'categories' ? 'bg-blue-500' : 'bg-gray-300'} text-white font-bold rounded`}
+          onClick={() => setSelectedTab('categories')}
+        >
+          カテゴリー
+        </button>
+        <button
+          className={`px-4 py-2 mr-2 ${selectedTab === 'text' ? 'bg-blue-500' : 'bg-gray-300'} text-white font-bold rounded`}
+          onClick={() => setSelectedTab('text')}
+        >
+          テキスト
         </button>
       </div>
 
-      <div className="bg-white p-4 rounded mb-4">
-        <h2 className="text-xl mb-2">Edit Copied Note</h2>
-        <textarea
-          className="border rounded w-full py-2 px-3 mb-2"
-          value={copiedNoteContent}
-          onChange={(e) => setCopiedNoteContent(e.target.value)}
-          placeholder="Edit copied note here"
-        />
-        <button
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          onClick={() => {
-            navigator.clipboard
-              .writeText(copiedNoteContent)
-              .then(() => {
-                alert('編集したノートがコピーされました!');
-              })
-              .catch((err) => {
-                console.error('コピーに失敗しました: ', err);
-              });
-          }}
-        >
-          Copy Edited Note
-        </button>
-      </div>
-
-      {/* Tab Navigation for Categories */}
-      <div className="bg-white p-4 rounded mb-4">
-        <h2 className="text-xl mb-2">Categories</h2>
-        <div className="flex">
-          <button
-            className={`py-2 px-4 rounded mr-2 ${
-              selectedTab === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-            }`}
-            onClick={() => setSelectedTab('all')}
-          >
-            View All
-          </button>
-          {categories.map((category) => (
+      {selectedTab === 'notes' && (
+        <>
+          {/* Category Tabs for Notes */}
+          <div className="mb-4 flex flex-wrap">
             <button
-              key={category.id}
-              className={`py-2 px-4 rounded mr-2 ${
-                selectedTab === category.id ? 'bg-blue-500 text-white' : 'bg-gray-200'
-              }`}
-              onClick={() => setSelectedTab(category.id)}
+              className={`px-4 py-2 mr-2 mb-2 ${selectedCategory === 'all' ? 'bg-blue-500' : 'bg-gray-300'} text-white font-bold rounded`}
+              onClick={() => setSelectedCategory('all')}
             >
-              {category.name}
+              すべて
             </button>
-          ))}
-        </div>
-      </div>
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                className={`px-4 py-2 mr-2 mb-2 ${selectedCategory === category.id ? 'bg-blue-500' : 'bg-gray-300'} text-white font-bold rounded`}
+                onClick={() => setSelectedCategory(category.id)}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
 
-      <div className="bg-white p-4 rounded">
-        <h2 className="text-xl mb-2">Your Notes</h2>
-        {filteredNotes.map((note) => (
-          <div
-            key={note.id}
-            className="border-b border-gray-200 py-2 flex items-center"
+          {/* Add Note Form */}
+          <div className="mb-4">
+            <h2 className="text-lg font-bold mb-2">メモを追加</h2>
+            <input
+              type="text"
+              className="border border-gray-300 p-2 w-full mb-2"
+              placeholder="タイトル"
+              value={newNoteTitle}
+              onChange={(e) => setNewNoteTitle(e.target.value)}
+            />
+            <textarea
+              className="border border-gray-300 p-2 w-full mb-2"
+              placeholder="内容"
+              value={newNoteContent}
+              onChange={(e) => setNewNoteContent(e.target.value)}
+            />
+            <select
+              className="border border-gray-300 p-2 w-full mb-2"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              <option value="" disabled>カテゴリーを選択</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+            <button
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+              onClick={handleAddNote}
+            >
+              追加
+            </button>
+          </div>
+
+          {/* Note List */}
+          <div className="mb-4">
+            <h2 className="text-lg font-bold mb-2">メモリスト</h2>
+            <ul>
+              {filteredNotes.map((note) => (
+                <li key={note.id} className="flex justify-between items-center border border-gray-300 p-2 mb-2 rounded">
+                  <h3 className="text-xl font-bold">{note.title}</h3>
+                  {/* <p className="text-gray-700">{formatNoteContent(note.content)}</p> */}
+                  <div className="flex">
+                    <button
+                      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2"
+                      onClick={() => handleStartEditNote(note.id, note.title, note.content, note.category)}
+                    >
+                      編集
+                    </button>
+                    <button
+                      className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded mr-2"
+                      onClick={() => setNoteToDelete(note.id)}
+                    >
+                      削除
+                    </button>
+                    <button
+                      className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded mr-2"
+                      onClick={() => handleCopyNote(note.content)}
+                    >
+                      コピー
+                    </button>
+                    <button
+                      className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-1 px-2 rounded"
+                      onClick={() => handleCreateNote(note.content)}
+                    >
+                      テキスト
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
+
+      {selectedTab === 'categories' && (
+        <>
+          {/* Add Category Form */}
+          <div className="mb-4">
+            <h2 className="text-lg font-bold mb-2">カテゴリーを追加</h2>
+            <input
+              type="text"
+              className="border border-gray-300 p-2 w-full mb-2"
+              placeholder="カテゴリー名"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+            />
+            <button
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+              onClick={handleAddCategory}
+            >
+              追加
+            </button>
+          </div>
+
+          {/* Category List */}
+          <div className="mb-4">
+            <h2 className="text-lg font-bold mb-2">カテゴリーリスト</h2>
+            <ul>
+              {categories.map((category) => (
+                <li key={category.id} className="border border-gray-300 p-2 mb-2 rounded flex justify-between items-center">
+                  <span>{category.name}</span>
+                  <div className="flex">
+                    <button
+                      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2"
+                      onClick={() => handleStartEditCategory(category.id, category.name)}
+                    >
+                      編集
+                    </button>
+                    <button
+                      className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded"
+                      onClick={() => setDeleteCategoryId(category.id)}
+                    >
+                      削除
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
+
+      {selectedTab === 'text' && (
+        <div className="mb-4">
+          <h2 className="text-lg font-bold mb-2">テキスト</h2>
+          <textarea
+            className="border text-black border-gray-300 p-2 w-full mb-2"
+            value={selectedNoteContent}
+            onChange={(e) => setSelectedNoteContent(e.target.value)}
+          />
+          <button
+            className="bg-blue-500 text-white py-2 px-4 rounded"
+            onClick={() => handleCopyNote('タイトル')}
           >
-            {editNoteId === note.id ? (
-              <>
-                <input
-                  className="border rounded w-full py-2 px-3 mr-2"
-                  type="text"
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  placeholder="Edit your note"
-                />
-                <button
-                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2"
-                  onClick={() => handleUpdateNote(note.id)}
-                >
-                  Save
-                </button>
-                <button
-                  className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-                  onClick={() => {
-                    setEditNoteId(null);
-                    setEditContent('');
-                  }}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1">{formatNoteContent(note.content)}</span>
-                <button
-                  className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded mr-2"
-                  onClick={() => {
-                    setEditNoteId(note.id);
-                    setEditContent(note.content);
-                  }}
-                >
-                  Edit
-                </button>
-                <button
-                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mr-2"
-                  onClick={() => setNoteToDelete(note.id)}
-                >
-                  Delete
-                </button>
-                <button
-                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2"
-                  onClick={() => handleCreateNote(note.content)}
-                >
-                  Create
-                </button>
-                <button
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                  onClick={() => handleCopyNote(note.content)}
-                >
-                  Copy
-                </button>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
+            コピー
+          </button>
+        </div>
+      )}
 
-      {/* 削除確認モーダル */}
-      {noteToDelete && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h3 className="text-lg font-bold mb-4">ノートを削除しますか？</h3>
-            <p className="mb-4">この操作は元に戻せません。</p>
-            <div className="flex justify-end">
-              <button
-                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mr-2"
-                onClick={() => setNoteToDelete(null)}
-              >
-                キャンセル
-              </button>
-              <button
-                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                onClick={handleDeleteNote}
-              >
-                削除
-              </button>
-            </div>
+      {/* Edit Note Modal */}
+      {editNoteId && (
+        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+          <div className="bg-white p-4 rounded w-1/2">
+            <h2 className="text-lg font-bold mb-2">ノートを編集</h2>
+            <input
+              type="text"
+              className="border border-gray-300 p-2 w-full mb-2"
+              placeholder="タイトル"
+              value={editNoteTitle}
+              onChange={(e) => setEditNoteTitle(e.target.value)}
+            />
+            <textarea
+              className="border border-gray-300 p-2 w-full mb-2"
+              placeholder="内容"
+              value={editNoteContent}
+              onChange={(e) => setEditNoteContent(e.target.value)}
+            />
+            <select
+              className="border border-gray-300 p-2 w-full mb-2"
+              value={editNoteCategory}
+              onChange={(e) => setEditNoteCategory(e.target.value)}
+            >
+              <option value="" disabled>カテゴリーを選択</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+            <button
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+              onClick={handleUpdateNote}
+            >
+              更新
+            </button>
+            <button
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2"
+              onClick={() => setEditNoteId(null)}
+            >
+              閉じる
+            </button>
           </div>
+        </div>
+      )}
+
+      {/* Delete Note Confirmation */}
+      {noteToDelete && (
+        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+          <div className="bg-white p-4 rounded w-1/2">
+            <h2 className="text-lg font-bold mb-2">ノートを削除</h2>
+            <p className="mb-4">このノートを削除しますか？</p>
+            <button
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+              onClick={handleDeleteNote}
+            >
+              削除
+            </button>
+            <button
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2"
+              onClick={() => setNoteToDelete(null)}
+            >
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Category Confirmation */}
+      {deleteCategoryId && (
+        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+          <div className="bg-white p-4 rounded w-1/2">
+            <h2 className="text-lg font-bold mb-2">カテゴリーを削除</h2>
+            <p className="mb-4">このカテゴリーを削除しますか？</p>
+            <button
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+              onClick={handleDeleteCategory}
+            >
+              削除
+            </button>
+            <button
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2"
+              onClick={() => setDeleteCategoryId(null)}
+            >
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Category Modal */}
+      {editCategoryId && (
+        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+          <div className="bg-white p-4 rounded w-1/2">
+            <h2 className="text-lg font-bold mb-2">カテゴリーを編集</h2>
+            <input
+              type="text"
+              className="border border-gray-300 p-2 w-full mb-2"
+              placeholder="カテゴリー名"
+              value={editCategoryName}
+              onChange={(e) => setEditCategoryName(e.target.value)}
+            />
+            <button
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+              onClick={handleEditCategory}
+            >
+              更新
+            </button>
+            <button
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2"
+              onClick={() => setEditCategoryId(null)}
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Message */}
+      {toastMessage && (
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded shadow-lg">
+          {toastMessage}
         </div>
       )}
     </div>
