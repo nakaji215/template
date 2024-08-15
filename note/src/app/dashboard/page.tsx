@@ -89,6 +89,11 @@ export default function Dashboard() {
   }, [router, user]);
 
   const handleAddNote = async () => {
+    if (!user) {
+      setToastMessage('ログインエラー');
+      return;
+    }
+
     if (newNoteTitle.trim() === '' || newNoteContent.trim() === '' || selectedCategory.trim() === '') {
       setToastMessage('メモのタイトル、内容、カテゴリーを入力してください。');
       return;
@@ -120,6 +125,11 @@ export default function Dashboard() {
   
 
   const handleUpdateNote = async () => {
+    if (!user) {
+      setToastMessage('ログインエラー');
+      return;
+    }
+
     if (editNoteId && editNoteTitle.trim() !== '' && editNoteContent.trim() !== '') {
       const noteRef = ref(database, `notes/${user.uid}/${editNoteId}`);
       await update(noteRef, {
@@ -135,6 +145,11 @@ export default function Dashboard() {
   };
 
   const handleDeleteNote = async () => {
+    if (!user) {
+      setToastMessage('ログインエラー');
+      return;
+    }
+    
     if (noteToDelete) {
       const noteRef = ref(database, `notes/${user.uid}/${noteToDelete}`);
       await remove(noteRef);
@@ -180,6 +195,11 @@ export default function Dashboard() {
   const handleAddCategory = async () => {
     if (newCategory.trim() === '') return;
 
+    if (!user) {
+      setToastMessage('ログインエラー');
+      return;
+    }
+
     const isDuplicate = categories.some(
       (category) => category.name === newCategory.trim()
     );
@@ -195,6 +215,11 @@ export default function Dashboard() {
   };
 
   const handleEditCategory = async () => {
+    if (!user) {
+      setToastMessage('ログインエラー');
+      return;
+    }
+
     if (editCategoryId && editCategoryName.trim() !== '') {
       const categoryRef = ref(database, `categories/${user.uid}/${editCategoryId}`);
       await update(categoryRef, { name: editCategoryName });
@@ -217,6 +242,11 @@ export default function Dashboard() {
   };
 
   const handleDeleteCategory = async () => {
+    if (!user) {
+      setToastMessage('ログインエラー');
+      return;
+    }
+
     if (deleteCategoryId) {
       const categoryRef = ref(database, `categories/${user.uid}/${deleteCategoryId}`);
       await remove(categoryRef);
