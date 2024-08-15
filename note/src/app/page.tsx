@@ -158,16 +158,20 @@ export default function Home() {
               type="button"
               onClick={() => doLogin(email, password)}
             >
-              Log In
+              ログイン
             </button>
             <button
               className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
               type="button"
               onClick={() => doSignup(email, password)}
             >
-              Sign Up
+              新規登録
             </button>
           </div>
+
+          <p>test@example.com</p>
+          <p>password</p>
+          <p>でログインしくてださい。</p>
         </form>
       </div>
     </div>

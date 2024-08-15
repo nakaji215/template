@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { auth, database } from '@/framework/firebase';
 import { signOut } from 'firebase/auth';
 import { ref, push, update, remove, onValue } from 'firebase/database';
+import Toast from './toast';
 
 type Note = {
   id: string;
@@ -89,10 +90,17 @@ export default function Dashboard() {
 
   const handleAddNote = async () => {
     if (newNoteTitle.trim() === '' || newNoteContent.trim() === '' || selectedCategory.trim() === '') {
-      setToastMessage('メモのタイトル、内容、カテゴリーを入力してください。'); // 修正
+      setToastMessage('メモのタイトル、内容、カテゴリーを入力してください。');
       return;
     }
-
+  
+    // タイトルの重複チェック
+    const isDuplicateTitle = notes.some(note => note.title === newNoteTitle.trim());
+    if (isDuplicateTitle) {
+      setToastMessage('同じタイトルのメモがすでに存在します。');
+      return;
+    }
+  
     try {
       const userNotesRef = ref(database, `notes/${user.uid}`);
       await push(userNotesRef, {
@@ -102,13 +110,14 @@ export default function Dashboard() {
       });
       setNewNoteTitle('');
       setNewNoteContent('');
-      setSelectedCategory('all'); // 修正
-
+      setSelectedCategory('all');
+  
       setToastMessage('メモが正常に追加されました！');
     } catch (error) {
       setToastMessage('メモの追加中にエラーが発生しました。');
     }
   };
+  
 
   const handleUpdateNote = async () => {
     if (editNoteId && editNoteTitle.trim() !== '' && editNoteContent.trim() !== '') {
@@ -220,11 +229,11 @@ export default function Dashboard() {
     : notes.filter((note) => note.category === selectedCategory);
 
   return (
-    <div className="w-screen h-screen p-4">
-      <div className='flex justify-between items-center'>
-        <h1 className="text-red sm:text-3xl text-xl mb-4">Service Name</h1>
+    <div className="w-full h-full p-4">
+      <div className='flex justify-between items-center mb-4'>
+        <h1 className="text-red sm:text-3xl text-xl font-bold text-blue-300">FRIDGE</h1>
         <button
-          className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mb-4"
+          className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
           onClick={handleSignOut}
         >
           ログアウト
@@ -234,19 +243,19 @@ export default function Dashboard() {
       {/* Tabs Navigation */}
       <div className="mb-4 flex whitespace-nowrap">
         <button
-          className={`px-2 py-2 mr-2 sm:px-4 ${selectedTab === 'notes' ? 'bg-blue-500' : 'bg-gray-300'} text-white font-bold rounded`}
+          className={`px-2 py-2 mr-2 sm:px-4 ${selectedTab === 'notes' ? 'bg-blue-400' : 'bg-gray-300'} text-white font-bold rounded`}
           onClick={() => setSelectedTab('notes')}
         >
           ノート
         </button>
         <button
-          className={`px-4 py-2 mr-2 ${selectedTab === 'categories' ? 'bg-blue-500' : 'bg-gray-300'} text-white font-bold rounded`}
+          className={`px-4 py-2 mr-2 ${selectedTab === 'categories' ? 'bg-blue-400' : 'bg-gray-300'} text-white font-bold rounded`}
           onClick={() => setSelectedTab('categories')}
         >
           カテゴリー
         </button>
         <button
-          className={`px-4 py-2 mr-2 ${selectedTab === 'text' ? 'bg-blue-500' : 'bg-gray-300'} text-white font-bold rounded`}
+          className={`px-4 py-2 mr-2 ${selectedTab === 'text' ? 'bg-blue-400' : 'bg-gray-300'} text-white font-bold rounded`}
           onClick={() => setSelectedTab('text')}
         >
           テキスト
@@ -258,7 +267,7 @@ export default function Dashboard() {
           {/* Category Tabs for Notes */}
           <div className="mb-4 flex flex-wrap">
             <button
-              className={`px-4 py-2 mr-2 mb-2 ${selectedCategory === 'all' ? 'bg-blue-500' : 'bg-gray-300'} text-white font-bold rounded`}
+              className={`px-4 py-2 mr-2 mb-2 ${selectedCategory === 'all' ? 'bg-blue-400' : 'bg-gray-300'} text-white font-bold rounded`}
               onClick={() => setSelectedCategory('all')}
             >
               すべて
@@ -266,7 +275,7 @@ export default function Dashboard() {
             {categories.map((category) => (
               <button
                 key={category.id}
-                className={`px-4 py-2 mr-2 mb-2 ${selectedCategory === category.id ? 'bg-blue-500' : 'bg-gray-300'} text-white font-bold rounded`}
+                className={`px-4 py-2 mr-2 mb-2 ${selectedCategory === category.id ? 'bg-blue-400' : 'bg-gray-300'} text-white font-bold rounded`}
                 onClick={() => setSelectedCategory(category.id)}
               >
                 {category.name}
@@ -275,76 +284,76 @@ export default function Dashboard() {
           </div>
 
           {/* Add Note Form */}
-          <div className="mb-4">
-            <h2 className="text-lg font-bold mb-2">メモを追加</h2>
-            <input
-              type="text"
-              className="border border-gray-300 p-2 w-full mb-2"
-              placeholder="タイトル"
-              value={newNoteTitle}
-              onChange={(e) => setNewNoteTitle(e.target.value)}
-            />
-            <textarea
-              className="border border-gray-300 p-2 w-full mb-2"
-              placeholder="内容"
-              value={newNoteContent}
-              onChange={(e) => setNewNoteContent(e.target.value)}
-            />
-            <select
-              className="border border-gray-300 p-2 w-full mb-2"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="" disabled>カテゴリーを選択</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>{category.name}</option>
-              ))}
-            </select>
-            <button
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-              onClick={handleAddNote}
-            >
-              追加
-            </button>
-          </div>
-
-          {/* Note List */}
-          <div className="mb-4">
-            <h2 className="text-lg font-bold mb-2">メモリスト</h2>
-            <ul>
-              {filteredNotes.map((note) => (
-                <li key={note.id} className="flex justify-between items-center border border-gray-300 p-2 mb-2 rounded">
-                  <h3 className="text-xl font-bold">{note.title}</h3>
-                  {/* <p className="text-gray-700">{formatNoteContent(note.content)}</p> */}
-                  <div className="flex">
-                    <button
-                      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2"
-                      onClick={() => handleStartEditNote(note.id, note.title, note.content, note.category)}
-                    >
-                      編集
-                    </button>
-                    <button
-                      className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded mr-2"
-                      onClick={() => setNoteToDelete(note.id)}
-                    >
-                      削除
-                    </button>
-                    <button
-                      className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded mr-2"
-                      onClick={() => handleCopyNote(note.content)}
-                    >
-                      コピー
-                    </button>
-                    <button
-                      className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-1 px-2 rounded"
-                      onClick={() => handleCreateNote(note.content)}
-                    >
-                      テキスト
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+          <div className='lg:flex flex-row-reverse gap-10'>
+            <div className="mb-4 flex-1">
+              <h2 className="text-lg font-bold mb-2">メモリスト</h2>
+              <ul>
+                {filteredNotes.map((note) => (
+                  <li key={note.id} className="flex flex-wrap justify-between items-center border border-gray-300 p-2 mb-2 rounded">
+                    <h3 className="text-xl font-bold">{note.title}</h3>
+                    {/* <p className="text-gray-700">{formatNoteContent(note.content)}</p> */}
+                    <div className="flex">
+                      <button
+                        className="bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2"
+                        onClick={() => handleStartEditNote(note.id, note.title, note.content, note.category)}
+                      >
+                        編集
+                      </button>
+                      <button
+                        className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded mr-2"
+                        onClick={() => setNoteToDelete(note.id)}
+                      >
+                        削除
+                      </button>
+                      <button
+                        className="bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2"
+                        onClick={() => handleCopyNote(note.content)}
+                      >
+                        コピー
+                      </button>
+                      <button
+                        className="bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded"
+                        onClick={() => handleCreateNote(note.content)}
+                      >
+                        作成
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="mb-4 flex-1">
+              <h2 className="text-lg font-bold mb-2">メモを追加</h2>
+              <input
+                type="text"
+                className="border border-gray-300 p-2 w-full mb-2"
+                placeholder="タイトル"
+                value={newNoteTitle}
+                onChange={(e) => setNewNoteTitle(e.target.value)}
+              />
+              <textarea
+                className="border border-gray-300 p-2 w-full mb-2 h-96"
+                placeholder="内容"
+                value={newNoteContent}
+                onChange={(e) => setNewNoteContent(e.target.value)}
+              />
+              <select
+                className="border border-gray-300 p-2 w-full mb-2"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="" disabled>カテゴリーを選択</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+              <button
+                className="bg-blue-400 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded"
+                onClick={handleAddNote}
+              >
+                追加
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -362,7 +371,7 @@ export default function Dashboard() {
               onChange={(e) => setNewCategory(e.target.value)}
             />
             <button
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+              className="bg-blue-400 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded"
               onClick={handleAddCategory}
             >
               追加
@@ -378,7 +387,7 @@ export default function Dashboard() {
                   <span>{category.name}</span>
                   <div className="flex">
                     <button
-                      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2"
+                      className="bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2"
                       onClick={() => handleStartEditCategory(category.id, category.name)}
                     >
                       編集
@@ -398,16 +407,16 @@ export default function Dashboard() {
       )}
 
       {selectedTab === 'text' && (
-        <div className="mb-4">
+        <div className="mb-4 h-full">
           <h2 className="text-lg font-bold mb-2">テキスト</h2>
           <textarea
-            className="border text-black border-gray-300 p-2 w-full mb-2"
+            className="border text-black border-gray-300 p-2 w-full h-96 mb-2"
             value={selectedNoteContent}
             onChange={(e) => setSelectedNoteContent(e.target.value)}
           />
           <button
-            className="bg-blue-500 text-white py-2 px-4 rounded"
-            onClick={() => handleCopyNote('タイトル')}
+            className="bg-blue-400 text-white py-2 px-4 rounded"
+            onClick={() => handleCopyNote(selectedNoteContent)}
           >
             コピー
           </button>
@@ -417,7 +426,7 @@ export default function Dashboard() {
       {/* Edit Note Modal */}
       {editNoteId && (
         <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
-          <div className="bg-white p-4 rounded w-1/2">
+          <div className="bg-white p-4 rounded w-9/12 h-4/5">
             <h2 className="text-lg font-bold mb-2">ノートを編集</h2>
             <input
               type="text"
@@ -427,7 +436,7 @@ export default function Dashboard() {
               onChange={(e) => setEditNoteTitle(e.target.value)}
             />
             <textarea
-              className="border border-gray-300 p-2 w-full mb-2"
+              className="border border-gray-300 p-2 w-full mb-2 sm:h-3/4 h-80 resize-none"
               placeholder="内容"
               value={editNoteContent}
               onChange={(e) => setEditNoteContent(e.target.value)}
@@ -442,18 +451,20 @@ export default function Dashboard() {
                 <option key={category.id} value={category.id}>{category.name}</option>
               ))}
             </select>
-            <button
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-              onClick={handleUpdateNote}
-            >
-              更新
-            </button>
-            <button
-              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2"
-              onClick={() => setEditNoteId(null)}
-            >
-              閉じる
-            </button>
+            <div className='flex justify-end'>
+              <button
+                className="bg-blue-400 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded"
+                onClick={handleUpdateNote}
+              >
+                更新
+              </button>
+              <button
+                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2"
+                onClick={() => setEditNoteId(null)}
+              >
+                閉じる
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -464,18 +475,21 @@ export default function Dashboard() {
           <div className="bg-white p-4 rounded w-1/2">
             <h2 className="text-lg font-bold mb-2">ノートを削除</h2>
             <p className="mb-4">このノートを削除しますか？</p>
-            <button
-              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-              onClick={handleDeleteNote}
-            >
-              削除
-            </button>
-            <button
-              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2"
-              onClick={() => setNoteToDelete(null)}
-            >
-              キャンセル
-            </button>
+            <div className='flex justify-end'>
+              <button
+                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+                onClick={() => setNoteToDelete(null)}
+              >
+                キャンセル
+              </button>
+              <button
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ml-2"
+                onClick={handleDeleteNote}
+              >
+                削除
+              </button>
+            </div>
+            
           </div>
         </div>
       )}
@@ -515,7 +529,7 @@ export default function Dashboard() {
               onChange={(e) => setEditCategoryName(e.target.value)}
             />
             <button
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+              className="bg-blue-400 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded"
               onClick={handleEditCategory}
             >
               更新
@@ -532,9 +546,7 @@ export default function Dashboard() {
 
       {/* Toast Message */}
       {toastMessage && (
-        <div className="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded shadow-lg">
-          {toastMessage}
-        </div>
+        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
       )}
     </div>
   );
