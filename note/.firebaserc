@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "template-33e07",
+    "template": "template-33e07"
+  },
+  "targets": {},
+  "etags": {},
+  "dataconnectEmulatorConfig": {}
+}

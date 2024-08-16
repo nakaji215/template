@@ -458,7 +458,7 @@ export default function Dashboard() {
               onChange={(e) => setEditNoteTitle(e.target.value)}
             />
             <textarea
-              className="border border-gray-300 p-2 w-full mb-2 sm:h-3/4 h-80 resize-none"
+              className="border border-gray-300 p-2 w-full mb-2 sm:h- h-1/2 resize-none"
               placeholder="内容"
               value={editNoteContent}
               onChange={(e) => setEditNoteContent(e.target.value)}
