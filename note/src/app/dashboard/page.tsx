@@ -286,7 +286,7 @@ export default function Dashboard() {
           className={`px-4 py-2 mr-2 ${selectedTab === 'text' ? 'bg-blue-400' : 'bg-gray-300'} text-white font-bold rounded`}
           onClick={() => setSelectedTab('text')}
         >
-          テキスト
+          作成
         </button>
       </div>
 
