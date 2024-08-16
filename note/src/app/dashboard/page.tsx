@@ -95,14 +95,13 @@ export default function Dashboard() {
     }
 
     if (newNoteTitle.trim() === '' || newNoteContent.trim() === '' || selectedCategory.trim() === '') {
-      setToastMessage('メモのタイトル、内容、カテゴリーを入力してください。');
+      setToastMessage('ノートのタイトル、内容、カテゴリーを入力してください。');
       return;
     }
   
-    // タイトルの重複チェック
     const isDuplicateTitle = notes.some(note => note.title === newNoteTitle.trim());
     if (isDuplicateTitle) {
-      setToastMessage('同じタイトルのメモがすでに存在します。');
+      setToastMessage('同じタイトルのノートがすでに存在します。');
       return;
     }
   
@@ -117,9 +116,9 @@ export default function Dashboard() {
       setNewNoteContent('');
       setSelectedCategory('all');
   
-      setToastMessage('メモが正常に追加されました！');
+      setToastMessage('ノートが正常に追加されました！');
     } catch (error) {
-      setToastMessage('メモの追加中にエラーが発生しました。');
+      setToastMessage('ノートの追加中にエラーが発生しました。');
     }
   };
   
@@ -135,12 +134,12 @@ export default function Dashboard() {
       await update(noteRef, {
         title: editNoteTitle,
         content: editNoteContent,
-        category: editNoteCategory || 'カテゴリー', // Ensure default category here
+        category: editNoteCategory || 'カテゴリー',
       });
       setEditNoteId(null);
       setEditNoteTitle('');
       setEditNoteContent('');
-      setEditNoteCategory(''); // 修正
+      setEditNoteCategory('');
     }
   };
 
@@ -270,7 +269,6 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Tabs Navigation */}
       <div className="mb-4 flex whitespace-nowrap">
         <button
           className={`px-2 py-2 mr-2 sm:px-4 ${selectedTab === 'notes' ? 'bg-blue-400' : 'bg-gray-300'} text-white font-bold rounded`}
@@ -294,7 +292,6 @@ export default function Dashboard() {
 
       {selectedTab === 'notes' && (
         <>
-          {/* Category Tabs for Notes */}
           <div className="mb-4 flex flex-wrap">
             <button
               className={`px-4 py-2 mr-2 mb-2 ${selectedCategory === 'all' ? 'bg-blue-400' : 'bg-gray-300'} text-white font-bold rounded`}
@@ -313,15 +310,13 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Add Note Form */}
           <div className='lg:flex flex-row-reverse gap-10'>
             <div className="mb-4 flex-1">
-              <h2 className="text-lg font-bold mb-2">メモリスト</h2>
+              <h2 className="text-lg font-bold mb-2">ノートリスト</h2>
               <ul>
                 {filteredNotes.map((note) => (
                   <li key={note.id} className="flex flex-wrap justify-between items-center border border-gray-300 p-2 mb-2 rounded">
                     <h3 className="text-xl font-bold">{note.title}</h3>
-                    {/* <p className="text-gray-700">{formatNoteContent(note.content)}</p> */}
                     <div className="flex">
                       <button
                         className="bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2"
@@ -353,7 +348,7 @@ export default function Dashboard() {
               </ul>
             </div>
             <div className="mb-4 flex-1">
-              <h2 className="text-lg font-bold mb-2">メモを追加</h2>
+              <h2 className="text-lg font-bold mb-2">ノートを追加</h2>
               <input
                 type="text"
                 className="border border-gray-300 p-2 w-full mb-2"
@@ -390,7 +385,6 @@ export default function Dashboard() {
 
       {selectedTab === 'categories' && (
         <>
-          {/* Add Category Form */}
           <div className="mb-4">
             <h2 className="text-lg font-bold mb-2">カテゴリーを追加</h2>
             <input
@@ -408,7 +402,6 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Category List */}
           <div className="mb-4">
             <h2 className="text-lg font-bold mb-2">カテゴリーリスト</h2>
             <ul>
@@ -453,7 +446,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Edit Note Modal */}
       {editNoteId && (
         <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
           <div className="bg-white p-4 rounded w-9/12 h-4/5">
@@ -499,7 +491,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Delete Note Confirmation */}
       {noteToDelete && (
         <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
           <div className="bg-white p-4 rounded w-1/2">
@@ -524,7 +515,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Delete Category Confirmation */}
       {deleteCategoryId && (
         <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
           <div className="bg-white p-4 rounded w-1/2">
@@ -546,7 +536,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Edit Category Modal */}
       {editCategoryId && (
         <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
           <div className="bg-white p-4 rounded w-1/2">
@@ -574,7 +563,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Toast Message */}
       {toastMessage && (
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
       )}

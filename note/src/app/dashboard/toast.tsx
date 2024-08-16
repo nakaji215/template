@@ -1,4 +1,3 @@
-// Toast.tsx
 import React from 'react';
 
 interface ToastProps {
@@ -8,7 +7,7 @@ interface ToastProps {
 
 const Toast: React.FC<ToastProps> = ({ message, onClose }) => {
   React.useEffect(() => {
-    const timer = setTimeout(onClose, 3000); // トーストを3秒後に自動で消す
+    const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
 

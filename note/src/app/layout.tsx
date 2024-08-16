@@ -1,11 +1,10 @@
-// src/app/layout.tsx
 import '../styles/globals.css';
 import 'tailwindcss/tailwind.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Simple Web App',
-  description: 'A simple web app using Next.js, Tailwind CSS, and Firebase.',
+  title: 'FRIDGE',
+  description: 'React,TypeScript,Next.js,Tailwind CSS,Firebaseを使用した、メモを保存、編集、削除、コピー、コピーして作成することができるメモアプリです。',
 };
 
 export default function RootLayout({
